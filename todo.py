@@ -30,8 +30,11 @@ while True:
     choice = input("Choose an option (1-4): ")
 
     if choice == "1":
-        task = input("Enter task: ")
-        add_task(task)
+        task = input("Enter task (or type 'cancel' to return to menu): ").strip()
+        if task.lower() == "cancel" or task == "":
+            print("Task addition canceled.")
+        else:
+            add_task(task)
     elif choice == "2":
         view_tasks()
     elif choice == "3":

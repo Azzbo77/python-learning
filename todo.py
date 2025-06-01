@@ -45,58 +45,61 @@ def add_task(task, priority, due_date):
     print(f"Added task: {task} (Priority: {priority}{due_date_display})")
     save_tasks()
 
-def view_tasks(tasks_to_view=None, pause=True, sort_method=""):
-    if not tasks_to_view:
-        tasks_to_view = tasks
-    if not tasks_to_view:
+def view_tasks(pause=True, default_view=False):
+    if not tasks:
         print("No tasks yet!")
+        if pause:
+            input("Press Enter to continue...")
+        return
+    if default_view:
+        tasks_to_view = tasks
+        sort_method = ""
     else:
-        if sort_method:
-            print(f"Tasks sorted by {sort_method}")
-        print("Your tasks:")
-        for i, task in enumerate(tasks_to_view, 1):
-            due_date_display = f"Due: {task['due_date']}" if task["due_date"] else ""
-            priority_display = f"Priority: {task['priority']}"
-            if sort_method == "due date" and task["due_date"]:
-                display = f"{due_date_display}, {priority_display}"
-            else:
-                display = f"{priority_display}{', ' + due_date_display if task['due_date'] else ''}"
-            print(f"{i}. {task['task']} ({display})")
+        priority_order = {"High": 2, "Medium": 1, "Low": 0}
+        def get_due_date(task):
+            if not task["due_date"]:
+                return datetime.max  # No due date goes last
+            try:
+                return datetime.strptime(task["due_date"], "%I:%M %p %d-%m-%Y")
+            except ValueError:
+                return datetime.max  # Invalid or time-only due date goes last
+        choice = input("View by: 1. Default 2. Priority (High > Medium > Low) 3. Due date (earliest first) (press x to cancel): ").strip()
+        if choice.lower() == "x" or choice == "":
+            print("View canceled.")
+            return
+        tasks_to_view = tasks
+        sort_method = ""
+        if choice == "2":
+            tasks_to_view = sorted(tasks, key=lambda x: priority_order[x["priority"]], reverse=True)
+            sort_method = "priority"
+        elif choice == "3":
+            tasks_to_view = sorted(tasks, key=get_due_date)
+            sort_method = "due date"
+        elif choice != "1":
+            print("Invalid choice!")
+            return
+    if sort_method:
+        print(f"Tasks sorted by {sort_method}")
+    print("Your tasks:")
+    for i, task in enumerate(tasks_to_view, 1):
+        due_date_display = f"Due: {task['due_date']}" if task['due_date'] else ""
+        priority_display = f"Priority: {task['priority']}"
+        if sort_method == "due date" and task["due_date"]:
+            display = f"{due_date_display}, {priority_display}"
+        else:
+            display = f"{priority_display}{', ' + due_date_display if task['due_date'] else ''}"
+        print(f"{i}. {task['task']} ({display})")
     if pause:
         input("Press Enter to continue...")
 
 def delete_task(index):
     try:
         task = tasks.pop(index - 1)
-        due_date_display = f", Due: {task['due_date']}" if task["due_date"] else ""
+        due_date_display = f", Due: {task['due_date']}" if task['due_date'] else ""
         print(f"Deleted task: {task['task']} (Priority: {task['priority']}{due_date_display})")
         save_tasks()
     except IndexError:
         print("Invalid task number!")
-
-# Sort tasks by priority or due date
-def sort_tasks():
-    priority_order = {"High": 2, "Medium": 1, "Low": 0}
-    def get_due_date(task):
-        if not task["due_date"]:
-            return datetime.max  # No due date goes last
-        try:
-            return datetime.strptime(task["due_date"], "%I:%M %p %d-%m-%Y")
-        except ValueError:
-            return datetime.max  # Invalid or time-only due date goes last
-
-    choice = input("Sort by: 1. Priority (High > Medium > Low) 2. Due date (earliest first) (press x to cancel): ").strip()
-    if choice.lower() == "x" or choice == "":
-        print("Sort canceled.")
-        return
-    elif choice == "1":
-        sorted_tasks = sorted(tasks, key=lambda x: priority_order[x["priority"]], reverse=True)
-        view_tasks(tasks_to_view=sorted_tasks, sort_method="priority")
-    elif choice == "2":
-        sorted_tasks = sorted(tasks, key=get_due_date)
-        view_tasks(tasks_to_view=sorted_tasks, sort_method="due date")
-    else:
-        print("Invalid choice!")
 
 # Load tasks at startup
 load_tasks()
@@ -105,11 +108,10 @@ load_tasks()
 while True:
     print("\nTo-Do App")
     print("1. Add task")
-    print("2. View tasks")
-    print("3. Delete task")
-    print("4. Sort tasks")
-    print("5. Exit")
-    choice = input("Choose an option (1-5): ").strip()
+    print("2. Delete task")
+    print("3. View tasks")
+    print("4. Exit")
+    choice = input("Choose an option (1-4): ").strip()
 
     if choice == "1":
         task = input("Enter task (press x to cancel): ").strip()
@@ -194,9 +196,16 @@ while True:
                                                 print("Invalid month! Using time only.")
                                                 due_date = f"{hour}:{minutes} {am_pm}"
                                             else:
-                                                year = input("Select year (e.g., 2025, press x or Enter to cancel): ").strip()
+                                                year = input("Select year (e.g., 2025, press t for this year, x or Enter to cancel): ").strip()
                                                 if year.lower() == "x" or year == "":
                                                     due_date = f"{hour}:{minutes} {am_pm}"
+                                                elif year.lower() == "t":
+                                                    year = str(datetime.now().year)
+                                                    if is_valid_datetime(hour, minutes, am_pm, day, month, year):
+                                                        due_date = f"{hour}:{minutes} {am_pm} {day}-{month}-{year}"
+                                                    else:
+                                                        print("Invalid date/time! Skipping due date.")
+                                                        due_date = ""
                                                 else:
                                                     try:
                                                         year = int(year)
@@ -213,9 +222,7 @@ while True:
                                                             due_date = ""
             add_task(task, priority, due_date)
     elif choice == "2":
-        view_tasks()
-    elif choice == "3":
-        view_tasks(pause=False)
+        view_tasks(pause=False, default_view=True)
         index = input("Enter task number to delete (press x to cancel): ").strip()
         if index.lower() == "x" or index == "":
             print("Task deletion canceled.")
@@ -225,9 +232,9 @@ while True:
                 delete_task(index)
             except ValueError:
                 print("Invalid input! Please enter a number or 'x'.")
+    elif choice == "3":
+        view_tasks()
     elif choice == "4":
-        sort_tasks()
-    elif choice == "5":
         print("Goodbye!")
         break
     else:

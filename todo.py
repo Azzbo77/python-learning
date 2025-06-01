@@ -14,11 +14,15 @@ def load_tasks():
             for line in f:
                 line = line.strip()
                 if line:
-                    parts = line.rsplit(" | ", 2)
+                    parts = line.rsplit(" | ", 3)
                     task = parts[0]
                     priority = parts[1] if len(parts) > 1 else "Medium"
-                    due_date = parts[2] if len(parts) == 3 else ""
-                    tasks.append({"task": task, "priority": priority, "due_date": due_date})
+                    due_date = parts[2] if len(parts) > 2 else ""
+                    category = parts[3] if len(parts) > 3 else "Personal"
+                    # Map invalid/old categories to Personal
+                    category_map = {"W": "Work", "P": "Personal"}
+                    category = category_map.get(category.upper(), "Personal") if category else "Personal"
+                    tasks.append({"task": task, "priority": priority, "due_date": due_date, "category": category})
         save_tasks()  # Update file format
     print("Tasks loaded from tasks.txt")
 
@@ -27,7 +31,7 @@ def save_tasks():
     with open("tasks.txt", "w") as f:
         for task in tasks:
             due_date = task["due_date"] if task["due_date"] else ""
-            f.write(f"{task['task']} | {task['priority']} | {due_date}\n")
+            f.write(f"{task['task']} | {task['priority']} | {due_date} | {task['category']}\n")
 
 # Validate date/time components
 def is_valid_datetime(hour, minutes, am_pm, day, month, year):
@@ -39,10 +43,11 @@ def is_valid_datetime(hour, minutes, am_pm, day, month, year):
     except ValueError:
         return False
 
-def add_task(task, priority, due_date):
-    tasks.append({"task": task, "priority": priority, "due_date": due_date})
+def add_task(task, priority, due_date, category):
+    tasks.append({"task": task, "priority": priority, "due_date": due_date, "category": category})
     due_date_display = f", Due: {due_date}" if due_date else ""
-    print(f"Added task: {task} (Priority: {priority}{due_date_display})")
+    category_display = f", Category: {category}"
+    print(f"Added task: {task} (Priority: {priority}{due_date_display}{category_display})")
     save_tasks()
 
 def view_tasks(pause=True, default_view=False):
@@ -63,7 +68,7 @@ def view_tasks(pause=True, default_view=False):
                 return datetime.strptime(task["due_date"], "%I:%M %p %d-%m-%Y")
             except ValueError:
                 return datetime.max  # Invalid or time-only due date goes last
-        choice = input("View by: 1. Default 2. Priority (High > Medium > Low) 3. Due date (earliest first) (press x to cancel): ").strip()
+        choice = input("View by: 1. Default 2. Priority (High > Medium > Low) 3. Due date (earliest first) 4. Category (press x to cancel): ").strip()
         if choice.lower() == "x" or choice == "":
             print("View canceled.")
             return
@@ -75,6 +80,9 @@ def view_tasks(pause=True, default_view=False):
         elif choice == "3":
             tasks_to_view = sorted(tasks, key=get_due_date)
             sort_method = "due date"
+        elif choice == "4":
+            tasks_to_view = sorted(tasks, key=lambda x: x["category"])
+            sort_method = "category"
         elif choice != "1":
             print("Invalid choice!")
             return
@@ -84,10 +92,11 @@ def view_tasks(pause=True, default_view=False):
     for i, task in enumerate(tasks_to_view, 1):
         due_date_display = f"Due: {task['due_date']}" if task['due_date'] else ""
         priority_display = f"Priority: {task['priority']}"
+        category_display = f"Category: {task['category']}"
         if sort_method == "due date" and task["due_date"]:
-            display = f"{due_date_display}, {priority_display}"
+            display = f"{category_display}, {due_date_display}, {priority_display}"
         else:
-            display = f"{priority_display}{', ' + due_date_display if task['due_date'] else ''}"
+            display = f"{category_display}, {priority_display}{', ' + due_date_display if task['due_date'] else ''}"
         print(f"{i}. {task['task']} ({display})")
     if pause:
         input("Press Enter to continue...")
@@ -96,7 +105,8 @@ def delete_task(index):
     try:
         task = tasks.pop(index - 1)
         due_date_display = f", Due: {task['due_date']}" if task['due_date'] else ""
-        print(f"Deleted task: {task['task']} (Priority: {task['priority']}{due_date_display})")
+        category_display = f", Category: {task['category']}"
+        print(f"Deleted task: {task['task']} (Priority: {task['priority']}{due_date_display}{category_display})")
         save_tasks()
     except IndexError:
         print("Invalid task number!")
@@ -104,8 +114,10 @@ def delete_task(index):
 def edit_task(index):
     try:
         task = tasks[index - 1]
-        print(f"Editing task: {task['task']} (Priority: {task['priority']}, Due: {task['due_date'] if task['due_date'] else 'None'})")
-        choice = input("Edit: 1. Description 2. Priority 3. Due date (press x to cancel): ").strip()
+        due_date_display = f", Due: {task['due_date']}" if task['due_date'] else ""
+        category_display = f", Category: {task['category']}"
+        print(f"Editing task: {task['task']} (Priority: {task['priority']}{due_date_display}{category_display})")
+        choice = input("Edit: 1. Description 2. Priority 3. Due date 4. Category (press x to cancel): ").strip()
         if choice.lower() == "x" or choice == "":
             print("Edit canceled.")
             return
@@ -129,6 +141,12 @@ def edit_task(index):
             tasks[index - 1]["due_date"] = due_date
             due_date_display = f"Due: {due_date}" if due_date else "None"
             print(f"Updated due date to: {due_date_display}")
+        elif choice == "4":
+            category = input("Enter new category (Work/Personal, press Enter for Personal): ").strip()
+            category_map = {"W": "Work", "P": "Personal"}
+            category = category_map.get(category.upper(), "Personal") if category else "Personal"
+            tasks[index - 1]["category"] = category
+            print(f"Updated category to: Category: {category}")
         else:
             print("Invalid choice!")
             return
@@ -236,8 +254,11 @@ while True:
                 priority = "Medium"
             else:
                 priority = priority_map[priority]
+            category = input("Enter category (Work/Personal, press Enter for Personal): ").strip()
+            category_map = {"W": "Work", "P": "Personal"}
+            category = category_map.get(category.upper(), "Personal") if category else "Personal"
             due_date = get_due_date()
-            add_task(task, priority, due_date)
+            add_task(task, priority, due_date, category)
     elif choice == "2":
         view_tasks(pause=False, default_view=True)
         index = input("Enter task number to delete (press x to cancel): ").strip()

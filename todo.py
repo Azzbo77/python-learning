@@ -1,9 +1,28 @@
 # Simple To-Do List App
+import os
+
+# Initialize tasks list
 tasks = []
+
+# Load tasks from file (if exists)
+def load_tasks():
+    global tasks
+    if os.path.exists("tasks.txt"):
+        with open("tasks.txt", "r") as file:
+            tasks = [line.strip() for line in file if line.strip()]
+            print("Tasks loaded from tasks.txt")
+
+# Save tasks to file
+def save_tasks():
+    with open("tasks.txt", "w") as file:
+        for task in tasks:
+            file.write(task + "\n")
+    print("Tasks saved to tasks.txt")
 
 def add_task(task):
     tasks.append(task)
     print(f"Added task: {task}")
+    save_tasks()
 
 def view_tasks():
     if not tasks:
@@ -17,8 +36,12 @@ def delete_task(index):
     try:
         task = tasks.pop(index - 1)
         print(f"Deleted task: {task}")
+        save_tasks()
     except IndexError:
         print("Invalid task number!")
+
+# Load tasks at startup
+load_tasks()
 
 # Main loop
 while True:

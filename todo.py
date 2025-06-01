@@ -2,8 +2,29 @@
 import os
 from datetime import datetime
 
-# Initialize tasks list
+# Initialize tasks and categories lists
 tasks = []
+categories = []
+
+# Load categories from file
+def load_categories():
+    global categories
+    categories = []
+    if os.path.exists("categories.txt"):
+        with open("categories.txt", "r") as f:
+            for line in f:
+                category = line.strip()
+                if category and category not in categories:
+                    categories.append(category)
+    if not categories:
+        categories = ["Work", "Personal"]  # Default categories
+    save_categories()
+
+# Save categories to file
+def save_categories():
+    with open("categories.txt", "w") as f:
+        for category in categories:
+            f.write(f"{category}\n")
 
 # Load tasks from file
 def load_tasks():
@@ -18,10 +39,10 @@ def load_tasks():
                     task = parts[0]
                     priority = parts[1] if len(parts) > 1 else "Medium"
                     due_date = parts[2] if len(parts) > 2 else ""
-                    category = parts[3] if len(parts) > 3 else "Personal"
-                    # Map invalid/old categories to Personal
-                    category_map = {"W": "Work", "P": "Personal"}
-                    category = category_map.get(category.upper(), "Personal") if category else "Personal"
+                    category = parts[3] if len(parts) > 3 else categories[0]
+                    # Ensure category is valid
+                    if category not in categories:
+                        category = categories[0]
                     tasks.append({"task": task, "priority": priority, "due_date": due_date, "category": category})
         save_tasks()  # Update file format
     print("Tasks loaded from tasks.txt")
@@ -142,9 +163,31 @@ def edit_task(index):
             due_date_display = f"Due: {due_date}" if due_date else "None"
             print(f"Updated due date to: {due_date_display}")
         elif choice == "4":
-            category = input("Enter new category (Work/Personal, press Enter for Personal): ").strip()
-            category_map = {"W": "Work", "P": "Personal"}
-            category = category_map.get(category.upper(), "Personal") if category else "Personal"
+            if not categories:
+                print("No categories available! Add categories first.")
+                return
+            print("Available categories:")
+            for i, cat in enumerate(categories, 1):
+                print(f"{i}. {cat}")
+            category_input = input("Enter category number or new category name (press Enter for first category): ").strip()
+            if category_input.lower() == "x":
+                print("Edit canceled.")
+                return
+            if not category_input:
+                category = categories[0]
+            else:
+                try:
+                    category_index = int(category_input) - 1
+                    if 0 <= category_index < len(categories):
+                        category = categories[category_index]
+                    else:
+                        print("Invalid category number! Keeping original.")
+                        return
+                except ValueError:
+                    if category_input and category_input not in categories:
+                        categories.append(category_input)
+                        save_categories()
+                    category = category_input
             tasks[index - 1]["category"] = category
             print(f"Updated category to: Category: {category}")
         else:
@@ -229,7 +272,67 @@ def get_due_date():
     print("Invalid date/time! Skipping due date.")
     return ""
 
-# Load tasks at startup
+def manage_categories():
+    while True:
+        print("\nManage Categories")
+        print("1. Add category")
+        print("2. Remove category")
+        print("3. List categories")
+        print("4. Back")
+        choice = input("Choose an option (1-4, press x to cancel): ").strip()
+        if choice.lower() == "x" or choice == "4":
+            print("Exiting category management.")
+            break
+        if choice == "1":
+            category = input("Enter new category name (press x to cancel): ").strip()
+            if category.lower() == "x" or not category:
+                print("Category addition canceled.")
+                continue
+            if category in categories:
+                print("Category already exists!")
+                continue
+            categories.append(category)
+            save_categories()
+            print(f"Added category: {category}")
+        elif choice == "2":
+            if not categories:
+                print("No categories to remove!")
+                continue
+            print("Available categories:")
+            for i, cat in enumerate(categories, 1):
+                print(f"{i}. {cat}")
+            index = input("Enter category number to remove (press x to cancel): ").strip()
+            if index.lower() == "x" or not index:
+                print("Category removal canceled.")
+                continue
+            try:
+                index = int(index) - 1
+                if 0 <= index < len(categories):
+                    category = categories[index]
+                    # Check if any tasks use this category
+                    if any(task["category"] == category for task in tasks):
+                        print(f"Cannot remove '{category}' because it is used by tasks.")
+                        continue
+                    categories.pop(index)
+                    save_categories()
+                    print(f"Removed category: {category}")
+                else:
+                    print("Invalid category number!")
+            except ValueError:
+                print("Invalid input! Please enter a number or 'x'.")
+        elif choice == "3":
+            if not categories:
+                print("No categories available!")
+            else:
+                print("Available categories:")
+                for i, cat in enumerate(categories, 1):
+                    print(f"{i}. {cat}")
+            input("Press Enter to continue...")
+        else:
+            print("Invalid choice!")
+
+# Load categories and tasks at startup
+load_categories()
 load_tasks()
 
 # Main loop
@@ -238,9 +341,10 @@ while True:
     print("1. Add task")
     print("2. Delete task")
     print("3. Edit task")
-    print("4. View tasks")
-    print("5. Exit")
-    choice = input("Choose an option (1-5): ").strip()
+    print("4. Manage categories")
+    print("5. View tasks")
+    print("6. Exit")
+    choice = input("Choose an option (1-6): ").strip()
 
     if choice == "1":
         task = input("Enter task (press x to cancel): ").strip()
@@ -254,9 +358,31 @@ while True:
                 priority = "Medium"
             else:
                 priority = priority_map[priority]
-            category = input("Enter category (Work/Personal, press Enter for Personal): ").strip()
-            category_map = {"W": "Work", "P": "Personal"}
-            category = category_map.get(category.upper(), "Personal") if category else "Personal"
+            if not categories:
+                print("No categories available! Add categories first.")
+                continue
+            print("Available categories:")
+            for i, cat in enumerate(categories, 1):
+                print(f"{i}. {cat}")
+            category_input = input("Enter category number or new category name (press Enter for first category): ").strip()
+            if category_input.lower() == "x":
+                print("Task addition canceled.")
+                continue
+            if not category_input:
+                category = categories[0]
+            else:
+                try:
+                    category_index = int(category_input) - 1
+                    if 0 <= category_index < len(categories):
+                        category = categories[category_index]
+                    else:
+                        print("Invalid category number! Using first category.")
+                        category = categories[0]
+                except ValueError:
+                    if category_input and category_input not in categories:
+                        categories.append(category_input)
+                        save_categories()
+                    category = category_input
             due_date = get_due_date()
             add_task(task, priority, due_date, category)
     elif choice == "2":
@@ -282,8 +408,10 @@ while True:
             except ValueError:
                 print("Invalid input! Please enter a number or 'x'.")
     elif choice == "4":
-        view_tasks()
+        manage_categories()
     elif choice == "5":
+        view_tasks()
+    elif choice == "6":
         print("Goodbye!")
         break
     else:

@@ -1,10 +1,12 @@
-# Simple To-Do List App
-A command-line to-do list app built with Python to manage tasks with priorities.
+# Simple To-Do App
+A command-line to-do app built with Python to manage tasks with priorities and due dates.
 
 ## Features
-- Add tasks with priorities (High/Medium/Low, enter H/M/L)
+- Add tasks with priorities (High/Medium/Low, enter H/M/L) and optional due dates (HH:MM AM/PM DD-MM-YYYY)
+- Input due date/time via separate prompts for hour, minutes, AM/PM, day, month, year
+- Quick action: press 't' at day prompt to set due date to today
 - Cancel adding or deleting tasks with 'x' or Enter
-- View tasks with priorities, pauses until Enter is pressed
+- View tasks with priorities and due dates, pauses until Enter is pressed
 - Delete tasks (displays tasks without pause)
 - Save tasks to `tasks.txt` for persistence
 
@@ -15,7 +17,7 @@ A command-line to-do list app built with Python to manage tasks with priorities.
 4. Run: `python todo.py`
 
 ## Future Improvements
-- Add due dates to tasks (e.g., "2025-06-02")
-- Sort tasks by priority (High > Medium > Low)
-- Allow editing task descriptions or priorities
+- Sort tasks by priority (High > Medium > Low) or due date
+- Allow editing task descriptions, priorities, or due dates
 - Add task categories (e.g., Work, Personal)
+- Mark tasks as completed

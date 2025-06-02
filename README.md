@@ -9,6 +9,7 @@ A command-line to-do app built with Python to manage tasks with priorities, due 
 - Manage categories (add, remove, list) with a dedicated menu
 - Mark tasks as completed or uncompleted, displayed as [X] or [ ]
 - View tasks sorted by priority (High > Medium > Low, default), due date (earliest first), or category (alphabetical)
+- Filter tasks by completion status (all, incomplete, completed) or category
 - Delete tasks with priority-sorted view
 - Cancel adding, editing, or deleting tasks with 'x' or Enter
 - View tasks with a pause until Enter is pressed
@@ -22,4 +23,4 @@ A command-line to-do app built with Python to manage tasks with priorities, due 
 
 ## Future Improvements
 - Add recurring tasks
-- Filter tasks by completion status or category
+- Add task reminders or notifications

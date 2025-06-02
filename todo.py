@@ -1,6 +1,6 @@
 # Simple To-Do App
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # Initialize tasks and categories lists
 tasks = []
@@ -35,16 +35,20 @@ def load_tasks():
             for line in f:
                 line = line.strip()
                 if line:
-                    parts = line.rsplit(" | ", 4)
+                    parts = line.rsplit(" | ", 5)
                     task = parts[0]
                     priority = parts[1] if len(parts) > 1 else "Medium"
                     due_date = parts[2] if len(parts) > 2 else ""
                     category = parts[3] if len(parts) > 3 else categories[0]
                     completed = parts[4].lower() == "true" if len(parts) > 4 else False
-                    # Ensure category is valid
+                    recurrence = parts[5] if len(parts) > 5 else "None"
+                    # Ensure category and recurrence are valid
                     if category not in categories:
                         category = categories[0]
-                    tasks.append({"task": task, "priority": priority, "due_date": due_date, "category": category, "completed": completed})
+                    valid_recurrences = ["None", "Daily", "Weekly", "Monthly", "Yearly"]
+                    if recurrence not in valid_recurrences:
+                        recurrence = "None"
+                    tasks.append({"task": task, "priority": priority, "due_date": due_date, "category": category, "completed": completed, "recurrence": recurrence})
         save_tasks()  # Update file format
     print("Tasks loaded from tasks.txt")
 
@@ -53,7 +57,7 @@ def save_tasks():
     with open("tasks.txt", "w") as f:
         for task in tasks:
             due_date = task["due_date"] if task["due_date"] else ""
-            f.write(f"{task['task']} | {task['priority']} | {due_date} | {task['category']} | {task['completed']}\n")
+            f.write(f"{task['task']} | {task['priority']} | {due_date} | {task['category']} | {task['completed']} | {task['recurrence']}\n")
 
 # Validate date/time components
 def is_valid_datetime(hour, minutes, am_pm, day, month, year):
@@ -65,11 +69,12 @@ def is_valid_datetime(hour, minutes, am_pm, day, month, year):
     except ValueError:
         return False
 
-def add_task(task, priority, due_date, category):
-    tasks.append({"task": task, "priority": priority, "due_date": due_date, "category": category, "completed": False})
+def add_task(task, priority, due_date, category, recurrence):
+    tasks.append({"task": task, "priority": priority, "due_date": due_date, "category": category, "completed": False, "recurrence": recurrence})
     due_date_display = f", Due: {due_date}" if due_date else ""
     category_display = f", Category: {category}"
-    print(f"Added task: {task} (Priority: {priority}{due_date_display}{category_display})")
+    recurrence_display = f", Recurring: {recurrence}" if recurrence != "None" else ""
+    print(f"Added task: {task} (Priority: {priority}{due_date_display}{category_display}{recurrence_display})")
     save_tasks()
 
 def view_tasks(tasks_to_view, sort_method="priority", pause=True):
@@ -98,11 +103,12 @@ def view_tasks(tasks_to_view, sort_method="priority", pause=True):
         due_date_display = f"Due: {task['due_date']}" if task['due_date'] else ""
         priority_display = f"Priority: {task['priority']}"
         category_display = f"Category: {task['category']}"
+        recurrence_display = f"Recurring: {task['recurrence']}" if task["recurrence"] != "None" else ""
         completed_display = "[X]" if task["completed"] else "[ ]"
         if sort_method == "due date" and task["due_date"]:
-            display = f"{category_display}, {due_date_display}, {priority_display}"
+            display = f"{category_display}, {due_date_display}, {priority_display}, {recurrence_display}"
         else:
-            display = f"{category_display}, {priority_display}{', ' + due_date_display if task['due_date'] else ''}"
+            display = f"{category_display}, {priority_display}{', ' + due_date_display if task['due_date'] else ''}{', ' + recurrence_display if recurrence_display else ''}"
         print(f"{i}. {completed_display} {task['task']} ({display})")
     if pause:
         input("Press Enter to continue...")
@@ -112,8 +118,9 @@ def delete_task(index):
         task = tasks.pop(index - 1)
         due_date_display = f", Due: {task['due_date']}" if task['due_date'] else ""
         category_display = f", Category: {task['category']}"
+        recurrence_display = f", Recurring: {task['recurrence']}" if task["recurrence"] != "None" else ""
         completed_display = "[X]" if task["completed"] else "[ ]"
-        print(f"Deleted task: {completed_display} {task['task']} (Priority: {task['priority']}{due_date_display}{category_display})")
+        print(f"Deleted task: {completed_display} {task['task']} (Priority: {task['priority']}{due_date_display}{category_display}{recurrence_display})")
         save_tasks()
     except IndexError:
         print("Invalid task number!")
@@ -123,9 +130,10 @@ def edit_task(index):
         task = tasks[index - 1]
         due_date_display = f", Due: {task['due_date']}" if task['due_date'] else ""
         category_display = f", Category: {task['category']}"
+        recurrence_display = f", Recurring: {task['recurrence']}" if task["recurrence"] != "None" else ""
         completed_display = "[X]" if task["completed"] else "[ ]"
-        print(f"Editing task: {completed_display} {task['task']} (Priority: {task['priority']}{due_date_display}{category_display})")
-        choice = input("Edit: 1. Description 2. Priority 3. Due date 4. Category (press x to cancel): ").strip()
+        print(f"Editing task: {completed_display} {task['task']} (Priority: {task['priority']}{due_date_display}{category_display}{recurrence_display})")
+        choice = input("Edit: 1. Description 2. Priority 3. Due date 4. Category 5. Recurrence (press x to cancel): ").strip()
         if choice.lower() == "x" or choice == "":
             print("Edit canceled.")
             return
@@ -177,6 +185,20 @@ def edit_task(index):
                     category = category_input
             tasks[index - 1]["category"] = category
             print(f"Updated category to: Category: {category}")
+        elif choice == "5":
+            recurrence = input("Enter recurrence (D=Daily, W=Weekly, M=Monthly, Y=Yearly, press Enter for None): ").strip().upper()
+            recurrence_map = {"D": "Daily", "W": "Weekly", "M": "Monthly", "Y": "Yearly"}
+            if recurrence.lower() == "x":
+                print("Edit canceled.")
+                return
+            if not recurrence:
+                recurrence = "None"
+            else:
+                recurrence = recurrence_map.get(recurrence, "None")
+                if recurrence == "None":
+                    print("Invalid recurrence! Setting to None.")
+            tasks[index - 1]["recurrence"] = recurrence
+            print(f"Updated recurrence to: Recurring: {recurrence}")
         else:
             print("Invalid choice!")
             return
@@ -297,7 +319,7 @@ def manage_categories():
                 if 0 <= index < len(categories):
                     category = categories[index]
                     if any(task["category"] == category for task in tasks):
-                        print(f"Cannot remove '{category}' because it is used by tasks.")
+                        print(f"Cannot remove '{category}' because tasks are still assigned to it. Please reassign or delete those tasks first.")
                         continue
                     categories.pop(index)
                     save_categories()
@@ -324,14 +346,37 @@ def mark_task(index):
         status = "completed" if task["completed"] else "uncompleted"
         due_date_display = f", Due: {task['due_date']}" if task['due_date'] else ""
         category_display = f", Category: {task['category']}"
+        recurrence_display = f", Recurring: {task['recurrence']}" if task["recurrence"] != "None" else ""
         completed_display = "[X]" if task["completed"] else "[ ]"
-        print(f"Marked task as {status}: {completed_display} {task['task']} (Priority: {task['priority']}{due_date_display}{category_display})")
+        print(f"Marked task as {status}: {completed_display} {task['task']} (Priority: {task['priority']}{due_date_display}{category_display}{recurrence_display})")
+        if task["completed"] and task["recurrence"] != "None" and task["due_date"]:
+            recurrence_map = {
+                "Daily": timedelta(days=1),
+                "Weekly": timedelta(weeks=1),
+                "Monthly": timedelta(days=30),  # Approximate
+                "Yearly": timedelta(days=365)
+            }
+            try:
+                due_date = datetime.strptime(task["due_date"], "%I:%M %p %d-%m-%Y")
+                new_due_date = due_date + recurrence_map[task["recurrence"]]
+                new_due_date_str = new_due_date.strftime("%I:%M %p %d-%m-%Y")
+                tasks.append({
+                    "task": task["task"],
+                    "priority": task["priority"],
+                    "due_date": new_due_date_str,
+                    "category": task["category"],
+                    "completed": False,
+                    "recurrence": task["recurrence"]
+                })
+                print(f"Created new recurring task: {task['task']} (Due: {new_due_date_str})")
+            except ValueError:
+                print("Invalid due date format; new recurring task not created.")
         save_tasks()
     except IndexError:
         print("Invalid task number!")
 
 def filter_tasks():
-    choice = input("Filter by: 1. All tasks 2. Incomplete tasks 3. Completed tasks 4. By category (press x to cancel): ").strip()
+    choice = input("Filter by: 1. All tasks 2. Incomplete tasks 3. Completed tasks 4. By category 5. By recurrence (press x to cancel): ").strip()
     if choice.lower() == "x" or choice == "":
         print("Filter canceled.")
         return
@@ -363,6 +408,26 @@ def filter_tasks():
                 filter_method = f"category '{selected_category}'"
             else:
                 print("Invalid category number!")
+                return
+        except ValueError:
+            print("Invalid input! Please enter a number or 'x'.")
+    elif choice == "5":
+        print("Recurrence types:")
+        recurrence_types = ["None", "Daily", "Weekly", "Monthly", "Yearly"]
+        for i, rec in enumerate(recurrence_types, 1):
+            print(f"{i}. {rec}")
+        recurrence_input = input("Enter recurrence number (press x to cancel): ").strip()
+        if recurrence_input.lower() == "x" or not recurrence_input:
+            print("Filter canceled.")
+            return
+        try:
+            recurrence_index = int(recurrence_input) - 1
+            if 0 <= recurrence_index < len(recurrence_types):
+                selected_recurrence = recurrence_types[recurrence_index]
+                tasks_to_view = [task for task in tasks if task["recurrence"] == selected_recurrence]
+                filter_method = f"recurrence '{selected_recurrence}'"
+            else:
+                print("Invalid recurrence number!")
                 return
         except ValueError:
             print("Invalid input! Please enter a number or 'x'.")
@@ -433,7 +498,18 @@ while True:
                         save_categories()
                     category = category_input
             due_date = get_due_date()
-            add_task(task, priority, due_date, category)
+            recurrence = input("Enter recurrence (D=Daily, W=Weekly, M=Monthly, Y=Yearly, press Enter for None): ").strip().upper()
+            recurrence_map = {"D": "Daily", "W": "Weekly", "M": "Monthly", "Y": "Yearly"}
+            if recurrence.lower() == "x":
+                print("Task addition canceled.")
+                continue
+            if not recurrence:
+                recurrence = "None"
+            else:
+                recurrence = recurrence_map.get(recurrence, "None")
+                if recurrence == "None":
+                    print("Invalid recurrence! Defaulting to None.")
+            add_task(task, priority, due_date, category, recurrence)
     elif choice == "2":
         view_tasks(tasks, "priority", pause=False)
         index = input("Enter task number to delete (press x to cancel): ").strip()
